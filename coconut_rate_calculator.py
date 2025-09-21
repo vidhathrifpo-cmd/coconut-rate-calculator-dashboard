@@ -61,14 +61,14 @@ class CoconutSupplyChainRateCalculator:
     
     def calculate_msme_price(self):
         """Calculate MSME price using the new formula"""
-        # Step 1: Copra Price = Coconut Procurement Price from FIG to Vidhathri × 0.3 × Copra Making Charges in Percentage
-        copra_price = self.parameters['coconut_procurement_price'] * 0.3 * (self.parameters['copra_making_charges_percentage'] / 100)
+        # Step 1: Copra Price = Coconut Procurement Price from FIG to Vidhathri ÷ 0.3 × (1+Copra Making Charges in Percentage/100)
+        copra_price = (self.parameters['coconut_procurement_price'] / 0.3) * (1 + self.parameters['copra_making_charges_percentage'] / 100)
         
-        # Step 2: Oil MSME Landing Price Per Litre = Copra Price × 0.6 × 0.91 × Oil Making Charges in Percentage/100
-        oil_msme_landing_price = copra_price * 0.6 * 0.91 * (self.parameters['oil_making_charges_percentage'] / 100)
+        # Step 2: Oil MSME Landing Price Per Litre = Copra Price ÷ 0.6 × 0.91 × (1+Oil Making Charges in Percentage/100)
+        oil_msme_landing_price = (copra_price / 0.6) * 0.91 * (1 + self.parameters['oil_making_charges_percentage'] / 100)
         
-        # Step 3: MSME Price(Inc of GST) = Oil MSME Landing Price Per Litre × MSME GST Percentage/100
-        msme_price = oil_msme_landing_price * (self.parameters['msme_gst_percentage'] / 100)
+        # Step 3: MSME Price(Inc of GST) = Oil MSME Landing Price Per Litre × (1+MSME GST Percentage/100)
+        msme_price = oil_msme_landing_price * (1 + self.parameters['msme_gst_percentage'] / 100)
         
         return {
             'copra_price': copra_price,
@@ -329,13 +329,13 @@ def main():
         st.header(f"📊 Cost Breakdown - {variant_name}")
         
         # FIG to FIG Enterprise/MSME Supply Chain
-        st.subheader("�� FIG to FIG Enterprise/MSME Supply Chain")
+        st.subheader(" FIG to FIG Enterprise/MSME Supply Chain")
         msme_steps = {
             'Step': [
                 'Coconut Procurement Price from FIG to Vidhathri',
-                'Copra Price = Procurement Price × 0.3 × Copra Making Charges %',
-                'Oil MSME Landing Price Per Litre = Copra Price × 0.6 × 0.91 × Oil Making Charges %',
-                'MSME Price(Inc of GST) = Oil Landing Price × MSME GST %'
+                'Copra Price = Procurement Price ÷ 0.3 × (1+Copra Making Charges %)',
+                'Oil MSME Landing Price Per Litre = Copra Price ÷ 0.6 × 0.91 × (1+Oil Making Charges %)',
+                'MSME Price(Inc of GST) = Oil Landing Price × (1+MSME GST %)'
             ],
             'Value (₹)': [
                 f"{costs['coconut_procurement_price']:.2f}",
@@ -369,7 +369,7 @@ def main():
         st.dataframe(df_fpc, use_container_width=True)
         
         # Final Price Calculation
-        st.subheader(f"�� Final Price Calculation - {sales_channel} Sales")
+        st.subheader(f" Final Price Calculation - {sales_channel} Sales")
         if sales_channel == 'Online':
             final_steps = {
                 'Step': [
