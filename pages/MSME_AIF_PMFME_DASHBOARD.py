@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="MSME AIF-PMFME Project Dashboard", layout="wide")
 st.title("MSME AIF-PMFME Project Dashboard")
@@ -18,12 +19,7 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
                                    interest_on_loan: float,
                                    depreciation_on_fixed_asset: float,
                                    miscellaneous_expenses: float):
-    """
-    Note:
-    - msme_price_inc_gst : selling price (inclusive of GST) per litre used for revenue calculation
-    - coconut_procurement_price_from_fig : procurement/raw material price used for raw material expense calc
-    """
-    # Total revenue uses MSME selling price (incl GST)
+    # 1. Revenue
     total_revenue_collected = (
         msme_price_inc_gst
         * number_of_litres_day
@@ -31,7 +27,7 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
         * months_working_year
     )
 
-    # Raw material direct expenses use procurement price
+    # 2. Variable Costs
     raw_material_direct_expenses = (
         number_of_nuts_day
         * per_nut_weight_factor
@@ -45,16 +41,24 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
         + semi_skilled_wages_salary_month * months_working_year * number_of_semi_skilled
     )
 
-    fixed_cost = interest_on_loan + depreciation_on_fixed_asset + (miscellaneous_expenses * 0.10)
-
-    contribution = total_revenue_collected - (
+    variable_costs = (
         raw_material_direct_expenses
         + salaries_and_wages
         + maintenance_and_expenses
         + (miscellaneous_expenses * 0.90)
     )
 
-    break_even_ratio = (fixed_cost / contribution) if contribution != 0 else 0.0
+    # 3. Contribution
+    contribution = total_revenue_collected - variable_costs
+
+    # 4. Fixed Costs
+    fixed_costs = interest_on_loan + depreciation_on_fixed_asset + (miscellaneous_expenses * 0.10)
+
+    # 5. Net Profit
+    net_profit = contribution - fixed_costs
+
+    # Break-even analysis
+    break_even_ratio = (fixed_costs / contribution) if contribution != 0 else 0.0
     break_even_point_percentage = break_even_ratio * 100.0
     break_even_point_sales = break_even_ratio * total_revenue_collected
 
@@ -66,8 +70,10 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
         "interest_on_loan": interest_on_loan,
         "depreciation_on_fixed_asset": depreciation_on_fixed_asset,
         "miscellaneous_expenses": miscellaneous_expenses,
-        "fixed_cost": fixed_cost,
+        "variable_costs": variable_costs,
         "contribution": contribution,
+        "fixed_costs": fixed_costs,
+        "net_profit": net_profit,
         "break_even_point_percentage": break_even_point_percentage,
         "break_even_point_sales": break_even_point_sales,
     }
@@ -75,21 +81,19 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
 with st.sidebar:
     st.header("Inputs")
 
-    # New: Selling price (MSME price including GST) used for revenue
     msme_price_inc_gst = st.number_input(
         "MSME Price (Incl. GST) per litre (₹)",
         value=80.00, min_value=0.0, step=0.01
     )
 
-    # Procurement price used for raw material calculation (kept separate)
     coconut_procurement_price_from_fig = st.number_input(
-        "Coconut Procurement Price from FIG to Vidhathri (₹ per kg or per unit)",
+        "Coconut Procurement Price from FIG (₹/kg)",
         value=51.64, min_value=0.0, step=0.01
     )
 
     with st.expander("Production Parameters", expanded=True):
         number_of_nuts_day = st.number_input("Number of Nuts per Day", value=2500.0, min_value=0.0, step=1.0)
-        per_nut_weight_factor = st.number_input("Per Nut Weight Factor", value=0.4, min_value=0.0, step=0.01, format="%.2f")
+        per_nut_weight_factor = st.number_input("Per Nut Weight Factor (kg/nut)", value=0.4, min_value=0.0, step=0.01, format="%.2f")
         months_working_year = st.number_input("Months Working in a Year", value=12.0, min_value=0.0, step=1.0)
         number_of_working_days_month = st.number_input("Working Days per Month", value=25.0, min_value=0.0, step=1.0)
         number_of_litres_day = st.number_input("Number of Litres per Day", value=175.0, min_value=0.0, step=1.0)
@@ -127,29 +131,43 @@ metrics = compute_msme_aif_pmfme_metrics(
 st.subheader("Key Performance Metrics")
 c1, c2, c3 = st.columns(3)
 c1.metric("Total Revenue Collected (₹)", f"{metrics['total_revenue_collected']:,.2f}")
-c2.metric("Fixed Cost (₹)", f"{metrics['fixed_cost']:,.2f}")
-c3.metric("Contribution (₹)", f"{metrics['contribution']:,.2f}")
+c2.metric("Contribution (₹)", f"{metrics['contribution']:,.2f}")
+c3.metric("Net Profit (₹)", f"{metrics['net_profit']:,.2f}")
 
 c4, c5 = st.columns(2)
 c4.metric("Break-even Point (%)", f"{metrics['break_even_point_percentage']:.2f}%")
 c5.metric("Break-even Point (Sales, ₹)", f"{metrics['break_even_point_sales']:,.2f}")
 
-st.subheader("Operating Expenses (Annual)")
-st.dataframe({
-    "Expense Category": [
-        "Raw Material (Direct)",
-        "Salaries and Wages",
-        "Maintenance and Expenses",
-        "Interest on Loan",
-        "Depreciation on Fixed Asset",
-        "Miscellaneous Expenses"
+# Profit & Loss Table
+st.subheader("Profit & Loss Statement (Annual)")
+pl_df = pd.DataFrame({
+    "Category": [
+        "Revenue",
+        "Variable Costs",
+        "   Raw Material",
+        "   Salaries & Wages",
+        "   Maintenance & Expenses",
+        "   Miscellaneous (90%)",
+        "Contribution",
+        "Fixed Costs",
+        "   Interest on Loan",
+        "   Depreciation on Fixed Asset",
+        "   Miscellaneous (10%)",
+        "Net Profit"
     ],
     "Amount (₹)": [
-        f"{metrics['raw_material_direct_expenses']:,.2f}",
-        f"{metrics['salaries_and_wages']:,.2f}",
-        f"{metrics['maintenance_and_expenses']:,.2f}",
-        f"{metrics['interest_on_loan']:,.2f}",
-        f"{metrics['depreciation_on_fixed_asset']:,.2f}",
-        f"{metrics['miscellaneous_expenses']:,.2f}",
+        metrics['total_revenue_collected'],
+        metrics['variable_costs'],
+        metrics['raw_material_direct_expenses'],
+        metrics['salaries_and_wages'],
+        metrics['maintenance_and_expenses'],
+        metrics['miscellaneous_expenses'] * 0.90,
+        metrics['contribution'],
+        metrics['fixed_costs'],
+        metrics['interest_on_loan'],
+        metrics['depreciation_on_fixed_asset'],
+        metrics['miscellaneous_expenses'] * 0.10,
+        metrics['net_profit']
     ]
-}, use_container_width=True)
+})
+st.dataframe(pl_df.style.format({"Amount (₹)": "{:,.2f}"}), use_container_width=True)
