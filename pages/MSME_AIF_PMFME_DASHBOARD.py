@@ -78,6 +78,7 @@ def compute_msme_aif_pmfme_metrics(msme_price_inc_gst: float,
         "break_even_point_sales": break_even_point_sales,
     }
 
+# ------------------------ Sidebar Inputs ------------------------
 with st.sidebar:
     st.header("Inputs")
 
@@ -92,11 +93,17 @@ with st.sidebar:
     )
 
     with st.expander("Production Parameters", expanded=True):
-        number_of_nuts_day = st.number_input("Number of Nuts per Day", value=2500.0, min_value=0.0, step=1.0)
-        per_nut_weight_factor = st.number_input("Per Nut Weight Factor (kg/nut)", value=0.4, min_value=0.0, step=0.01, format="%.2f")
+        per_nut_weight_factor = st.number_input(
+            "Per Nut Weight Factor (kg/nut)", value=0.4, min_value=0.0, step=0.01, format="%.2f",
+            help="Average coconut weight per nut in kg"
+        )
         months_working_year = st.number_input("Months Working in a Year", value=12.0, min_value=0.0, step=1.0)
         number_of_working_days_month = st.number_input("Working Days per Month", value=25.0, min_value=0.0, step=1.0)
         number_of_litres_day = st.number_input("Number of Litres per Day", value=175.0, min_value=0.0, step=1.0)
+
+        # Computed number of nuts/day based on litres/day
+        number_of_nuts_day = (number_of_litres_day * 0.91) / (per_nut_weight_factor * 0.3 * 0.6)
+        st.text(f"Calculated Number of Nuts per Day: {number_of_nuts_day:,.0f}")
 
     with st.expander("Salary & Wages", expanded=False):
         skilled_wages_month = st.number_input("Skilled Wages per Month (₹)", value=25000.0, min_value=0.0, step=1000.0)
@@ -110,6 +117,7 @@ with st.sidebar:
         depreciation_on_fixed_asset = st.number_input("Depreciation on Fixed Assets (₹)", value=407000.0, min_value=0.0, step=1000.0)
         miscellaneous_expenses = st.number_input("Miscellaneous Expenses (₹)", value=50000.0, min_value=0.0, step=1000.0)
 
+# ------------------------ Compute Metrics ------------------------
 metrics = compute_msme_aif_pmfme_metrics(
     msme_price_inc_gst=msme_price_inc_gst,
     coconut_procurement_price_from_fig=coconut_procurement_price_from_fig,
@@ -128,6 +136,7 @@ metrics = compute_msme_aif_pmfme_metrics(
     miscellaneous_expenses=miscellaneous_expenses,
 )
 
+# ------------------------ Display Key Metrics ------------------------
 st.subheader("Key Performance Metrics")
 c1, c2, c3 = st.columns(3)
 c1.metric("Total Revenue Collected (₹)", f"{metrics['total_revenue_collected']:,.2f}")
@@ -138,7 +147,7 @@ c4, c5 = st.columns(2)
 c4.metric("Break-even Point (%)", f"{metrics['break_even_point_percentage']:.2f}%")
 c5.metric("Break-even Point (Sales, ₹)", f"{metrics['break_even_point_sales']:,.2f}")
 
-# Profit & Loss Table
+# ------------------------ Profit & Loss Table ------------------------
 st.subheader("Profit & Loss Statement (Annual)")
 pl_df = pd.DataFrame({
     "Category": [
